@@ -1,0 +1,10 @@
+@"
+.env
+__pycache__/
+*.pyc
+.venv/
+admin_state.json
+teaser_data.json
+*.log
+admin_bot_backup.py
+"@ | Out-File -Encoding utf8 .gitignore

@@ -258,7 +258,7 @@ async def comando_regulacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🆔 <b>Chat ID:</b> <code>{r.get('chat_id')}</code>\n"
                 f"📊 <b>Status:</b> {r.get('status_anterior') or '—'}\n"
                 f"📈 <b>Posição:</b> {r.get('posicao_anterior') or '—'}\n"
-                f"🩺 <b>CBO:</b> {r.get('cbo') or '—'}\n"
+                f"🩺 <b>Especialidade:</b> {r.get('especialidade') or '—'}\n"
                 f"🏥 <b>Procedimento:</b> {r.get('procedimento') or '—'}\n"
                 f"📱 <b>Celular:</b> {r.get('celular') or '—'}\n\n"
                 "───\n\n"

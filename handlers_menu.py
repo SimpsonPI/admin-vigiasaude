@@ -205,32 +205,56 @@ async def callback_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "seg_enquete":
         await query.edit_message_text("📊 <b>Enviar Enquete</b>\n\n<code>/enviar_enquete todos | Pergunta | Op1 | Op2</code>", parse_mode="HTML")
 
-    # ─── AÇÕES: VS ADMIN ───
+        # ─── AÇÕES: VS ADMIN ───
     elif data == "vs_pergunta":
         await query.edit_message_text(
             "💬 <b>VS Admin — Pergunte qualquer coisa</b>\n\nDigite sua pergunta direto no chat.",
             parse_mode="HTML",
         )
+
     elif data == "vs_resumo":
         await query.edit_message_text("🤖 Consultando...", parse_mode="HTML")
         from ia_admin import processar_consulta_admin
+        from handlers_vs_admin import _limpar_html_ia
         resposta = await processar_consulta_admin("Me dê um resumo geral do sistema")
-        await query.edit_message_text(resposta, parse_mode="HTML")
+        resposta_limpa = _limpar_html_ia(resposta)
+        try:
+            await query.edit_message_text(resposta_limpa, parse_mode="HTML")
+        except Exception:
+            await query.edit_message_text(resposta_limpa)
+
     elif data == "vs_faturamento":
         await query.edit_message_text("💰 Consultando...", parse_mode="HTML")
         from ia_admin import processar_consulta_admin
+        from handlers_vs_admin import _limpar_html_ia
         resposta = await processar_consulta_admin("Qual o faturamento total e do mês atual?")
-        await query.edit_message_text(resposta, parse_mode="HTML")
+        resposta_limpa = _limpar_html_ia(resposta)
+        try:
+            await query.edit_message_text(resposta_limpa, parse_mode="HTML")
+        except Exception:
+            await query.edit_message_text(resposta_limpa)
+
     elif data == "vs_novos":
         await query.edit_message_text("🆕 Consultando...", parse_mode="HTML")
         from ia_admin import processar_consulta_admin
+        from handlers_vs_admin import _limpar_html_ia
         resposta = await processar_consulta_admin("Quantos usuários novos se cadastraram hoje?")
-        await query.edit_message_text(resposta, parse_mode="HTML")
+        resposta_limpa = _limpar_html_ia(resposta)
+        try:
+            await query.edit_message_text(resposta_limpa, parse_mode="HTML")
+        except Exception:
+            await query.edit_message_text(resposta_limpa)
+
     elif data == "vs_chamados":
         await query.edit_message_text("📞 Consultando...", parse_mode="HTML")
         from ia_admin import processar_consulta_admin
+        from handlers_vs_admin import _limpar_html_ia
         resposta = await processar_consulta_admin("Há chamados pendentes? Quantos?")
-        await query.edit_message_text(resposta, parse_mode="HTML")
+        resposta_limpa = _limpar_html_ia(resposta)
+        try:
+            await query.edit_message_text(resposta_limpa, parse_mode="HTML")
+        except Exception:
+            await query.edit_message_text(resposta_limpa)
 
     # ─── TOP 10 ───
     elif data == "top_regs":

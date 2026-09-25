@@ -152,7 +152,7 @@ async def comando_historico(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         res_reg = (
             supabase.table("AlertaSUS_2.0")
-            .select("numero_reg, nome_paciente, procedimento, cbo, status_anterior, posicao_anterior, created_at")
+            .select("numero_reg, nome_paciente, procedimento, especialidade, status_anterior, posicao_anterior, created_at")
             .eq("chat_id", target_id)
             .order("created_at", desc=True)
             .execute()

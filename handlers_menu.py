@@ -213,15 +213,9 @@ async def callback_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "vs_resumo":
-        await query.edit_message_text("🤖 Consultando...", parse_mode="HTML")
-        from ia_admin import processar_consulta_admin
-        from handlers_vs_admin import _limpar_html_ia
-        resposta = await processar_consulta_admin("Me dê um resumo geral do sistema")
-        resposta_limpa = _limpar_html_ia(resposta)
-        try:
-            await query.edit_message_text(resposta_limpa, parse_mode="HTML")
-        except Exception:
-            await query.edit_message_text(resposta_limpa)
+        from handlers_relatorios import comando_resumo
+        await comando_resumo(update, context)
+        return
 
     elif data == "vs_faturamento":
         await query.edit_message_text("💰 Consultando...", parse_mode="HTML")

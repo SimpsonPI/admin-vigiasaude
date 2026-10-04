@@ -4,6 +4,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from config import supabase
 from helpers import eh_admin, responder, fmt_data, fmt_moeda, emoji_status_plano
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +259,7 @@ async def comando_regulacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🆔 <b>Chat ID:</b> <code>{r.get('chat_id')}</code>\n"
                 f"📊 <b>Status:</b> {r.get('status_anterior') or '—'}\n"
                 f"📈 <b>Posição:</b> {r.get('posicao_anterior') or '—'}\n"
-                f"🩺 <b>Especialidade:</b> {r.get('especialidade') or '—'}\n"
+                f"🩺 <b>Especialidade:</b> {r.get('cbo') or '—'}\n"
                 f"🏥 <b>Procedimento:</b> {r.get('procedimento') or '—'}\n"
                 f"📱 <b>Celular:</b> {r.get('celular') or '—'}\n\n"
                 "───\n\n"
@@ -266,4 +267,104 @@ async def comando_regulacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await responder(update, texto)
     except Exception as e:
         logger.error(f"Erro em /regulacao: {e}")
+        await responder(update, f"❌ Erro: {e}")
+
+
+async def comando_resumo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Resumo geral com layout visual aprimorado."""
+    if not eh_admin(update.effective_user.id):
+        await responder(update, "⛔ Acesso negado.")
+        return
+
+    try:
+        res_ass = supabase.table("assinaturas").select("chat_id, status, tipo_plano").execute()
+        assinaturas = res_ass.data or []
+
+        res_pag = supabase.table("pagamentos_pix").select("valor, status, created_at").execute()
+        pagamentos = res_pag.data or []
+
+        res_reg = supabase.table("AlertaSUS_2.0").select("numero_reg, status_anterior, created_at").execute()
+        regs = res_reg.data or []
+
+        res_ch = supabase.table("chamados_suporte").select("status").execute()
+        chamados = res_ch.data or []
+
+        agora = datetime.now(timezone.utc)
+        agora_str = datetime.now().strftime("%d/%m/%Y • %H:%M")
+
+        total_usuarios = len(set(str(a.get("chat_id")) for a in assinaturas))
+        ativos = sum(1 for a in assinaturas if str(a.get("status", "")).lower() in ("ativo", "active", "ativa"))
+        cortesia = sum(1 for a in assinaturas if str(a.get("tipo_plano", "")).lower() == "cortesia")
+        degustacao = sum(1 for a in assinaturas if str(a.get("tipo_plano", "")).lower() == "degustacao")
+        bloqueados = sum(1 for a in assinaturas if str(a.get("status", "")).lower() == "bloqueado")
+
+        aprovados = [p for p in pagamentos if str(p.get("status", "")).lower() == "approved"]
+        pendentes = [p for p in pagamentos if str(p.get("status", "")).lower() in ("pending", "pendente")]
+        receita_total = sum(float(p.get("valor", 0) or 0) for p in aprovados)
+
+        receita_mes = 0
+        for p in aprovados:
+            try:
+                dt = datetime.fromisoformat(str(p.get("created_at")).replace("Z", "+00:00"))
+                if dt.year == agora.year and dt.month == agora.month:
+                    receita_mes += float(p.get("valor", 0) or 0)
+            except Exception:
+                pass
+
+        total_regs = len(regs)
+        agendadas = sum(1 for r in regs if "agend" in str(r.get("status_anterior") or "").lower())
+        em_fila = sum(
+            1 for r in regs
+            if "informada" in str(r.get("status_anterior") or "").lower()
+            or "fila" in str(r.get("status_anterior") or "").lower()
+        )
+        hoje = 0
+        for r in regs:
+            try:
+                dt = datetime.fromisoformat(str(r.get("created_at")).replace("Z", "+00:00"))
+                if dt.date() == agora.date():
+                    hoje += 1
+            except Exception:
+                pass
+
+        total_chamados = len(chamados)
+        abertos = sum(1 for c in chamados if str(c.get("status", "")).lower() in ("aberto", "em_andamento"))
+        respondidos = sum(1 for c in chamados if str(c.get("status", "")).lower() == "respondido")
+
+        texto = (
+            "📊 <b>RESUMO GERAL</b>\n"
+            f"🗓️ <i>{agora_str}</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+            "👥 <b>USUÁRIOS</b>\n"
+            f"<code>   Total ......... {total_usuarios}</code>\n"
+            f"<code>   ✅ Ativos ..... {ativos}</code>\n"
+            f"<code>   👑 Cortesia ... {cortesia}</code>\n"
+            f"<code>   🎁 Degustação . {degustacao}</code>\n"
+            f"<code>   🚫 Bloqueados . {bloqueados}</code>\n\n"
+
+            "💰 <b>PAGAMENTOS</b>\n"
+            f"<code>   ✅ Aprovados .. {len(aprovados)}</code>\n"
+            f"<code>   ⏳ Pendentes .. {len(pendentes)}</code>\n"
+            f"<code>   💵 Receita .... R$ {receita_total:.2f}</code>\n"
+            f"<code>   📅 Este mês ... R$ {receita_mes:.2f}</code>\n\n"
+
+            "📋 <b>REGULAÇÕES</b>\n"
+            f"<code>   Total ......... {total_regs}</code>\n"
+            f"<code>   🟢 Agendadas .. {agendadas}</code>\n"
+            f"<code>   🟡 Em fila .... {em_fila}</code>\n"
+            f"<code>   🆕 Hoje ....... {hoje}</code>\n\n"
+
+            "🎫 <b>CHAMADOS</b>\n"
+            f"<code>   Total ......... {total_chamados}</code>\n"
+            f"<code>   🔴 Abertos .... {abertos}</code>\n"
+            f"<code>   ✅ Respondidos  {respondidos}</code>\n\n"
+
+            "━━━━━━━━━━━━━━━━━━━━━"
+        )
+
+        await responder(update, texto)
+
+    except Exception as e:
+        logger.error(f"Erro em /resumo: {e}")
         await responder(update, f"❌ Erro: {e}")

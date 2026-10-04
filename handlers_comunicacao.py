@@ -107,16 +107,35 @@ async def processar_envio_enquete(update: Update, context: ContextTypes.DEFAULT_
     texto = " ".join(context.args)
     partes = [p.strip() for p in texto.split("|")]
 
-    if len(partes) < 3:
+    if len(partes) < 2:
         await responder(update, "⚠️ Formato inválido. Use: <code>/enviar_enquete todos | Pergunta | Op1 | Op2</code>")
         return
 
-    destino = partes[0].lower()
-    pergunta = partes[1]
-    opcoes = partes[2:]
+    # 🔍 Detecção automática do formato:
+    # - Se partes[0] for "todos" → broadcast
+    # - Se partes[0] for só dígitos (ID) → envia para 1 usuário
+    # - Caso contrário → assume que o admin esqueceu "todos" e trata partes[0] como PERGUNTA
+    primeira = partes[0].lower()
 
+    if primeira == "todos":
+        destino = "todos"
+        pergunta = partes[1] if len(partes) > 1 else ""
+        opcoes = partes[2:]
+    elif primeira.isdigit():
+        destino = primeira
+        pergunta = partes[1] if len(partes) > 1 else ""
+        opcoes = partes[2:]
+    else:
+        # Admin esqueceu "todos" — partes[0] é a própria pergunta
+        destino = "todos"
+        pergunta = partes[0]
+        opcoes = partes[1:]
+
+    if not pergunta:
+        await responder(update, "⚠️ A pergunta está vazia.")
+        return
     if len(opcoes) < 2:
-        await responder(update, "❌ Precisa de pelo menos 2 opções.")
+        await responder(update, "❌ Precisa de pelo menos 2 opções (separadas por <code>|</code>).")
         return
     if len(opcoes) > 10:
         await responder(update, "❌ Máximo de 10 opções.")
@@ -135,6 +154,9 @@ async def processar_envio_enquete(update: Update, context: ContextTypes.DEFAULT_
     await responder(update, f"📊 Enviando enquete para <b>{len(chat_ids)}</b> usuário(s)...")
 
     enviados, falhas = 0, 0
+    detalhes_falhas = []
+    bloqueados = []
+
     for cid in chat_ids:
         try:
             await context.bot.send_poll(
@@ -142,7 +164,27 @@ async def processar_envio_enquete(update: Update, context: ContextTypes.DEFAULT_
                 is_anonymous=True, allows_multiple_answers=False,
             )
             enviados += 1
-        except Exception:
+        except Exception as e:
             falhas += 1
+            erro_str = str(e)
 
-    await responder(update, f"✅ <b>Enquete enviada</b>\n\n• Enviadas: <b>{enviados}</b>\n• Falhas: <b>{falhas}</b>")
+            if "blocked" in erro_str.lower():
+                motivo = "🚫 Bloqueou o bot"
+                bloqueados.append(cid)
+            elif "chat not found" in erro_str.lower():
+                motivo = "❓ Nunca iniciou o bot"
+            elif "deactivated" in erro_str.lower():
+                motivo = "💀 Conta desativada"
+            else:
+                motivo = f"⚠️ {erro_str[:60]}"
+
+            detalhes_falhas.append(f"• <code>{cid}</code> → {motivo}")
+            logger.error(f"❌ Falha enquete para {cid}: {repr(e)}")
+
+    resposta = f"✅ <b>Enquete finalizada</b>\n\n• Enviadas: <b>{enviados}</b>\n• Falhas: <b>{falhas}</b>"
+    if detalhes_falhas:
+        resposta += "\n\n📋 <b>Detalhes das falhas:</b>\n" + "\n".join(detalhes_falhas)
+    if bloqueados:
+        resposta += f"\n\n💡 <i>{len(bloqueados)} usuário(s) bloquearam o bot.</i>"
+
+    await responder(update, resposta)

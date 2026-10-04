@@ -77,7 +77,7 @@ async def comando_cortesia(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await responder(update, "⚠️ Uso: <code>/cortesia &lt;ID&gt;</code>")
         return
 
-    target_id = context.args[0].strip()
+    target_id = context.args[0].strip().strip("<>").strip()  # ← limpa colchetes
 
     try:
         supabase.table("assinaturas").upsert({
@@ -86,8 +86,21 @@ async def comando_cortesia(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "status": "ativo",
             "data_inicio": datetime.now(timezone.utc).isoformat(),
             "data_vencimento": None,
-            "limite_ids": 99,
+            "limite_ids": 999,            # ← corrigido (era 99)
+            "usou_degustacao": False,     # ← NOVO: reseta degustação
         }, on_conflict="chat_id").execute()
+
+        await responder(
+            update,
+            f"✅ <b>Cortesia aplicada com sucesso!</b>\n\n"
+            f"• <b>ID:</b> <code>{target_id}</code>\n"
+            f"• <b>Plano:</b> Cortesia VIP 👑\n"
+            f"• <b>Limite:</b> Ilimitado\n"
+            f"• <b>Vencimento:</b> Sem vencimento"
+        )
+    except Exception as e:
+        logger.error(f"Erro em /cortesia: {e}")
+        await responder(update, f"❌ Erro: {e}")
 
         await responder(update, f"👑 Cortesia concedida para <code>{target_id}</code>.")
         try:

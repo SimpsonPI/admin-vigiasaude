@@ -152,7 +152,7 @@ async def comando_historico(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         res_reg = (
             supabase.table("AlertaSUS_2.0")
-            .select("numero_reg, nome_paciente, procedimento, especialidade, status_anterior, posicao_anterior, created_at")
+            .select("numero_reg, nome_paciente, procedimento, cbo, status_anterior, posicao_anterior, created_at")
             .eq("chat_id", target_id)
             .order("created_at", desc=True)
             .execute()
@@ -205,8 +205,10 @@ async def comando_historico(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if regulacoes:
             texto += f"━━━ 📋 <b>REGULAÇÕES</b> ({len(regulacoes)}) ━━━\n"
             for r in regulacoes[:5]:
+                especialidade = r.get('cbo') or 'Não informada'
                 texto += (
                     f"• <code>{r.get('numero_reg')}</code> — {r.get('nome_paciente', '?')}\n"
+                    f"   🩺 Especialidade: {especialidade}\n"
                     f"   {r.get('procedimento') or '?'} | {r.get('status_anterior') or 'Sem status'}\n"
                 )
             if len(regulacoes) > 5:

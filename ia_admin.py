@@ -226,7 +226,7 @@ async def processar_consulta_admin(mensagem: str) -> str:
         "• Use APENAS estas tags HTML: <b>negrito</b>, <i>itálico</i>, <code>código</code>\n"
         "• NUNCA use <ul>, <li>, <p>, <br>, <div>, <h1>, <h2>, <h3>\n"
         "• Para listas, use apenas '• ' ou '- ' no início da linha\n"
-        "• Para quebras de linha, use \\n (não use <br>)\n\n"
+        "• Para quebras de linha, apenas quebre a linha normalmente (não escreva \\n literal)\n\n"
         "REGRAS DE CONTEÚDO:\n"
         "1. Responda SEMPRE em português, de forma clara e objetiva.\n"
         "2. Use os dados do CONTEXTO para responder. NUNCA invente números.\n"
@@ -246,11 +246,10 @@ async def processar_consulta_usuario(chat_id: str, mensagem: str) -> str:
         f"Você é o VS Admin, assistente executivo do {NOME_ADMIN}.\n\n"
         f"O admin está perguntando sobre um usuário específico.\n\n"
         f"=== DADOS DO USUÁRIO ===\n{contexto}\n=== FIM ===\n\n"
-        "REGRAS DE FORMATAÇÃO:\n"
+                "REGRAS DE FORMATAÇÃO:\n"
         "• Use APENAS: <b>, <i>, <code>\n"
         "• NUNCA use: <ul>, <li>, <p>, <br>, <div>\n"
-        "• Listas com '• ' ou '- '\n\n"
-        "Responda de forma clara e objetiva."
-    )
-
+        "• Listas com '• ' ou '- '\n"
+        "• Para quebras de linha, apenas quebre a linha normalmente (não escreva \\n literal)\n\n"
+        )
     return await chamar_groq(system_prompt, mensagem)

@@ -19,6 +19,7 @@ from handlers_menu import comando_start, callback_menu
 from handlers_relatorios import (
     comando_stats, comando_assinaturas, comando_ativos,
     comando_pagamentos, comando_chamados, comando_regulacao,
+    comando_resumo,
 )
 from handlers_usuarios import (
     comando_user, comando_buscar, comando_historico, comando_top10,
@@ -85,6 +86,7 @@ def main():
     # ─── VS Admin ───
     app.add_handler(CommandHandler("vs", comando_vs))
     app.add_handler(CommandHandler("vs_off", comando_vs_off))
+    app.add_handler(CommandHandler("resumo", comando_resumo))
 
     # ─── Callbacks dos menus ───
     app.add_handler(CallbackQueryHandler(callback_menu, pattern="^menu_"))

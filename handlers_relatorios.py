@@ -261,7 +261,7 @@ async def comando_regulacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"📈 <b>Posição:</b> {r.get('posicao_anterior') or '—'}\n"
                 f"🩺 <b>Especialidade:</b> {r.get('cbo') or '—'}\n"
                 f"🏥 <b>Procedimento:</b> {r.get('procedimento') or '—'}\n"
-                f"📱 <b>Celular:</b> {r.get('celular') or '—'}\n\n"
+                
                 "───\n\n"
             )
         await responder(update, texto)

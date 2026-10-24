@@ -78,11 +78,11 @@ async def comando_buscar(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for r in (res.data or []):
                 resultados.append(("assinatura", r))
 
-        res_regs = supabase.table("AlertaSUS_2.0").select("chat_id, numero_reg, nome_paciente, celular, procedimento, status_anterior").execute()
+        res_regs = supabase.table("AlertaSUS_2.0").select("chat_id, numero_reg, nome_paciente, procedimento, status_anterior").execute()
         for r in (res_regs.data or []):
             nome = str(r.get("nome_paciente") or "").lower()
             num_reg = str(r.get("numero_reg") or "").lower()
-            cel = str(r.get("celular") or "").lower()
+            cel = ""
             if termo_lower in nome or termo_lower in num_reg or termo_lower in cel:
                 resultados.append(("regulacao", r))
 

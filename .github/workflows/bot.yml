@@ -32,4 +32,4 @@ jobs:
           PORT: ${{ secrets.PORT }}
         run: |
           pip install python-telegram-bot supabase httpx beautifulsoup4 google-generativeai groq
-          python main.py
+          python admin_bot.py

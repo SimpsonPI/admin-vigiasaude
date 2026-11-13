@@ -9,6 +9,38 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from telegram import Update
+from telegram.ext import ContextTypes, ApplicationHandlerStop, TypeHandler
+
+# Coloque aqui os IDs do Telegram que PODEM usar o bot
+# O 5242040324 e o 5444152614 são os que vimos nos seus logs.
+IDS_AUTORIZADOS = [5242040324]
+
+
+async def verificar_acesso_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Bloqueia qualquer usuário que não esteja na lista de autorizados."""
+    user = update.effective_user
+    if not user:
+        return
+
+    # Se o ID do usuário NÃO estiver na lista, bloqueia na hora
+    if user.id not in IDS_AUTORIZADOS:
+        texto_bloqueio = "⛔ <b>Acesso Restrito</b>\n\nEste é um painel privado e apenas administradores autorizados podem acessá-lo."
+
+        if update.message:
+            await update.message.reply_text(texto_bloqueio, parse_mode="HTML")
+        elif update.callback_query:
+            await update.callback_query.answer("⛔ Acesso Restrito.", show_alert=True)
+            try:
+                await update.callback_query.message.reply_text(
+                    texto_bloqueio, parse_mode="HTML"
+                )
+            except Exception:
+                pass
+
+        # Impede que a mensagem do usuário chegue aos comandos do bot
+        raise ApplicationHandlerStop
+
 
 from config import TELEGRAM_ADMIN_TOKEN
 from helpers import eh_admin
@@ -17,21 +49,35 @@ from notifications import verificar_novidades, inicializar_state
 # Handlers
 from handlers_menu import comando_start, callback_menu
 from handlers_relatorios import (
-    comando_stats, comando_assinaturas, comando_ativos,
-    comando_pagamentos, comando_chamados, comando_regulacao,
+    comando_stats,
+    comando_assinaturas,
+    comando_ativos,
+    comando_pagamentos,
+    comando_chamados,
+    comando_regulacao,
     comando_resumo,
 )
 from handlers_usuarios import (
-    comando_user, comando_buscar, comando_historico, comando_top10,
+    comando_user,
+    comando_buscar,
+    comando_historico,
+    comando_top10,
 )
 from handlers_planos import (
-    comando_plano, comando_cortesia, comando_remover_cortesia,
-    comando_retirar_plano, comando_retirar_degustacao,
-    comando_bloquear, comando_desbloquear, comando_aviso,
+    comando_plano,
+    comando_cortesia,
+    comando_remover_cortesia,
+    comando_retirar_plano,
+    comando_retirar_degustacao,
+    comando_bloquear,
+    comando_desbloquear,
+    comando_aviso,
 )
 from handlers_comunicacao import (
-    comando_enviar_midia, processar_envio_midia,
-    comando_enviar_enquete, processar_envio_enquete,
+    comando_enviar_midia,
+    processar_envio_midia,
+    comando_enviar_enquete,
+    processar_envio_enquete,
 )
 from handlers_vs_admin import comando_vs, comando_vs_off, mensagem_vs_admin
 
@@ -44,6 +90,9 @@ logger = logging.getLogger(__name__)
 
 async def erro_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error(msg="Exceção capturada:", exc_info=context.error)
+
+    # Adiciona o "segurança" para rodar ANTES de todos os outros comandos
+    app.add_handler(TypeHandler(Update, verificar_acesso_admin), group=-1)
 
 
 def main():
@@ -124,5 +173,6 @@ def main():
 
 if __name__ == "__main__":
     import multiprocessing
+
     multiprocessing.freeze_support()
     main()

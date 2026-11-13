@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
 from supabase import create_client
+from diagnostico_sistema import gerar_laudo_sistema
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env", override=True)
 
@@ -27,13 +28,18 @@ NOME_ADMIN = os.getenv("NOME_ADMIN", "Sr. Lincoln")
 
 import asyncio
 
+
 async def coletar_contexto() -> str:
     """Coleta um snapshot completo do sistema para a IA (consultas paralelas)."""
     agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
 
     async def get_assinaturas():
         try:
-            res = supabase.table("assinaturas").select("chat_id, tipo_plano, status, data_vencimento, usou_degustacao").execute()
+            res = (
+                supabase.table("assinaturas")
+                .select("chat_id, tipo_plano, status, data_vencimento, usou_degustacao")
+                .execute()
+            )
             return res.data or []
         except Exception as e:
             logger.error(f"Erro assinaturas: {e}")
@@ -41,7 +47,11 @@ async def coletar_contexto() -> str:
 
     async def get_pagamentos():
         try:
-            res = supabase.table("pagamentos_pix").select("valor, status, tipo_plano, created_at").execute()
+            res = (
+                supabase.table("pagamentos_pix")
+                .select("valor, status, tipo_plano, created_at")
+                .execute()
+            )
             return res.data or []
         except Exception as e:
             logger.error(f"Erro pagamentos: {e}")
@@ -49,7 +59,13 @@ async def coletar_contexto() -> str:
 
     async def get_regulacoes():
         try:
-            res = supabase.table("AlertaSUS_2.0").select("numero_reg, nome_paciente, chat_id, status_anterior, procedimento, created_at").execute()
+            res = (
+                supabase.table("AlertaSUS_2.0")
+                .select(
+                    "numero_reg, nome_paciente, chat_id, status_anterior, procedimento, created_at"
+                )
+                .execute()
+            )
             return res.data or []
         except Exception as e:
             logger.error(f"Erro regulações: {e}")
@@ -57,7 +73,11 @@ async def coletar_contexto() -> str:
 
     async def get_chamados():
         try:
-            res = supabase.table("chamados_suporte").select("id, nome_usuario, status, created_at").execute()
+            res = (
+                supabase.table("chamados_suporte")
+                .select("id, nome_usuario, status, created_at")
+                .execute()
+            )
             return res.data or []
         except Exception as e:
             logger.error(f"Erro chamados: {e}")
@@ -75,10 +95,20 @@ async def coletar_contexto() -> str:
 
     # ─── Assinaturas ───
     total = len(set(str(a.get("chat_id")) for a in assinaturas))
-    ativos = [a for a in assinaturas if str(a.get("status", "")).lower() in ("ativo", "active", "ativa")]
-    degustacao = [a for a in assinaturas if str(a.get("tipo_plano", "")).lower() == "degustacao"]
-    cortesia = [a for a in assinaturas if str(a.get("tipo_plano", "")).lower() == "cortesia"]
-    bloqueados = [a for a in assinaturas if str(a.get("status", "")).lower() == "bloqueado"]
+    ativos = [
+        a
+        for a in assinaturas
+        if str(a.get("status", "")).lower() in ("ativo", "active", "ativa")
+    ]
+    degustacao = [
+        a for a in assinaturas if str(a.get("tipo_plano", "")).lower() == "degustacao"
+    ]
+    cortesia = [
+        a for a in assinaturas if str(a.get("tipo_plano", "")).lower() == "cortesia"
+    ]
+    bloqueados = [
+        a for a in assinaturas if str(a.get("status", "")).lower() == "bloqueado"
+    ]
 
     linhas.append("USUÁRIOS:")
     linhas.append(f"• Total: {total}")
@@ -88,7 +118,9 @@ async def coletar_contexto() -> str:
     linhas.append(f"• Bloqueados: {len(bloqueados)}")
 
     # ─── Pagamentos ───
-    aprovados = [p for p in pagamentos if str(p.get("status", "")).lower() == "approved"]
+    aprovados = [
+        p for p in pagamentos if str(p.get("status", "")).lower() == "approved"
+    ]
     pendentes = [p for p in pagamentos if str(p.get("status", "")).lower() == "pending"]
     receita_total = sum(float(p.get("valor", 0) or 0) for p in aprovados)
 
@@ -132,8 +164,14 @@ async def coletar_contexto() -> str:
         linhas.append(f"   - {s}: {qtd}")
 
     # ─── Chamados ───
-    abertos = [c for c in chamados if str(c.get("status", "")).lower() in ("aberto", "em_andamento")]
-    respondidos = [c for c in chamados if str(c.get("status", "")).lower() == "respondido"]
+    abertos = [
+        c
+        for c in chamados
+        if str(c.get("status", "")).lower() in ("aberto", "em_andamento")
+    ]
+    respondidos = [
+        c for c in chamados if str(c.get("status", "")).lower() == "respondido"
+    ]
 
     linhas.append(f"\nCHAMADOS:")
     linhas.append(f"• Total: {len(chamados)}")
@@ -166,20 +204,36 @@ async def coletar_detalhes_usuario(chat_id: str) -> str:
         linhas.append(f"Erro assinatura: {e}")
 
     try:
-        res = supabase.table("pagamentos_pix").select("valor, tipo_plano, status, created_at").eq("chat_id", chat_id).execute()
+        res = (
+            supabase.table("pagamentos_pix")
+            .select("valor, tipo_plano, status, created_at")
+            .eq("chat_id", chat_id)
+            .execute()
+        )
         pagamentos = res.data or []
         linhas.append(f"• Total de pagamentos: {len(pagamentos)}")
-        total = sum(float(p.get("valor", 0) or 0) for p in pagamentos if str(p.get("status", "")).lower() == "approved")
+        total = sum(
+            float(p.get("valor", 0) or 0)
+            for p in pagamentos
+            if str(p.get("status", "")).lower() == "approved"
+        )
         linhas.append(f"• Total pago: R$ {total:.2f}")
     except Exception as e:
         linhas.append(f"Erro pagamentos: {e}")
 
     try:
-        res = supabase.table("AlertaSUS_2.0").select("numero_reg, nome_paciente, procedimento, status_anterior").eq("chat_id", chat_id).execute()
+        res = (
+            supabase.table("AlertaSUS_2.0")
+            .select("numero_reg, nome_paciente, procedimento, status_anterior")
+            .eq("chat_id", chat_id)
+            .execute()
+        )
         regs = res.data or []
         linhas.append(f"• Regulações: {len(regs)}")
         for r in regs[:5]:
-            linhas.append(f"   - {r.get('numero_reg')} — {r.get('procedimento')} — {r.get('status_anterior')}")
+            linhas.append(
+                f"   - {r.get('numero_reg')} — {r.get('procedimento')} — {r.get('status_anterior')}"
+            )
     except Exception as e:
         linhas.append(f"Erro regulações: {e}")
 
@@ -190,17 +244,21 @@ async def coletar_detalhes_usuario(chat_id: str) -> str:
 # CHAMADA À IA
 # ═══════════════════════════════════════════════════════════
 
+
 async def chamar_groq(system_prompt: str, user_message: str) -> str:
     if not GROQ_API_KEY:
         return "❌ GROQ_API_KEY não configurada no .env"
 
     url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
     payload = {
         "model": MODELO_IA,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
+            {"role": "user", "content": user_message},
         ],
         "temperature": 0.2,
         "max_tokens": 800,
@@ -218,23 +276,55 @@ async def chamar_groq(system_prompt: str, user_message: str) -> str:
 
 
 async def processar_consulta_admin(mensagem: str) -> str:
+    """
+    Processa a mensagem do admin.
+    Se for pedido de diagnóstico, roda a ferramenta e envia o laudo para a IA.
+    """
+    # 1. Verifica se o Admin está pedindo um diagnóstico
+    palavras_chave = [
+        "diagnostico",
+        "diagnóstico",
+        "status",
+        "travou",
+        "erro",
+        "log",
+        "caiu",
+    ]
+
+    if any(p in mensagem.lower() for p in palavras_chave):
+        logger.info("🩺 Admin solicitou diagnóstico. Coletando dados...")
+
+        try:
+            # Coleta os dados do sistema (banco, rede, logs)
+            laudo = await gerar_laudo_sistema()
+
+            # Prepara o prompt para a IA analisar o laudo
+            system_prompt = (
+                f"Você é um engenheiro de software sênior auxiliando {NOME_ADMIN}. "
+                "Sua tarefa é analisar o laudo técnico do sistema abaixo e explicar o que está acontecendo "
+                "de forma clara, direta e sem termos técnicos complicados. "
+                "Diga o que está causando o problema e como resolver."
+            )
+            user_prompt = f"O usuário perguntou: '{mensagem}'.\n\nAqui está o laudo do sistema:\n\n{laudo}"
+
+            # Chama a IA (Groq) com o laudo
+            resposta = await chamar_groq(system_prompt, user_prompt)
+            return resposta
+
+        except Exception as e:
+            logger.error(f"Erro ao processar diagnóstico: {e}")
+            return f"❌ Ocorreu um erro ao tentar gerar o diagnóstico: {e}"
+
+    # 2. Se não for diagnóstico, segue o fluxo normal da IA
     contexto = await coletar_contexto()
+
     system_prompt = (
-        f"Você é o VS Admin, assistente executivo do {NOME_ADMIN} no sistema VigiaSaúde.\n\n"
-        "Você tem acesso a TODOS os dados do sistema em tempo real (veja abaixo).\n\n"
-        "REGRAS DE FORMATAÇÃO (OBRIGATÓRIO):\n"
-        "• Use APENAS estas tags HTML: <b>negrito</b>, <i>itálico</i>, <code>código</code>\n"
-        "• NUNCA use <ul>, <li>, <p>, <br>, <div>, <h1>, <h2>, <h3>\n"
-        "• Para listas, use apenas '• ' ou '- ' no início da linha\n"
-        "• Para quebras de linha, apenas quebre a linha normalmente (não escreva \\n literal)\n\n"
-        "REGRAS DE CONTEÚDO:\n"
-        "1. Responda SEMPRE em português, de forma clara e objetiva.\n"
-        "2. Use os dados do CONTEXTO para responder. NUNCA invente números.\n"
-        "3. Se o admin perguntar sobre um usuário específico, use o comando /user <ID>.\n"
-        "4. Seja profissional, mas amigável.\n"
-        "5. Seja BREVE — máximo 5 linhas, exceto se o admin pedir detalhes.\n\n"
-        f"=== CONTEXTO ATUAL ===\n{contexto}\n=== FIM ==="
+        f"Você é o assistente do {NOME_ADMIN}. "
+        f"Aqui está o contexto atual do sistema:\n{contexto}\n\n"
+        "Responda de forma prestativa e direta."
     )
+
+    # Chama a IA normalmente
     return await chamar_groq(system_prompt, mensagem)
 
 
@@ -246,10 +336,10 @@ async def processar_consulta_usuario(chat_id: str, mensagem: str) -> str:
         f"Você é o VS Admin, assistente executivo do {NOME_ADMIN}.\n\n"
         f"O admin está perguntando sobre um usuário específico.\n\n"
         f"=== DADOS DO USUÁRIO ===\n{contexto}\n=== FIM ===\n\n"
-                "REGRAS DE FORMATAÇÃO:\n"
+        "REGRAS DE FORMATAÇÃO:\n"
         "• Use APENAS: <b>, <i>, <code>\n"
         "• NUNCA use: <ul>, <li>, <p>, <br>, <div>\n"
         "• Listas com '• ' ou '- '\n"
         "• Para quebras de linha, apenas quebre a linha normalmente (não escreva \\n literal)\n\n"
-        )
+    )
     return await chamar_groq(system_prompt, mensagem)

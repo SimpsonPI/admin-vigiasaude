@@ -31,4 +31,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           PORT: ${{ secrets.PORT }}
         run: |
-            pip install python-telegram-bot supabase httpx beautifulsoup4 google-generativeai groq python-dotenv
+                    run: |
+          pip install python-telegram-bot supabase httpx beautifulsoup4 google-generativeai groq python-dotenv
+          echo "--- INICIANDO O BOT AGORA ---"
+          python admin_bot.py
+          echo "--- O BOT TERMINOU (ISSO NÃO DEVERIA ACONTECER) ---"

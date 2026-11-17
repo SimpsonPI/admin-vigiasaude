@@ -1,4 +1,7 @@
 # admin_bot.py
+import os
+
+print("DEBUG TOKEN:", os.getenv("TELEGRAM_ADMIN_TOKEN"))
 import logging
 from telegram import Update
 from telegram.ext import (

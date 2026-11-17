@@ -1,4 +1,4 @@
-name: VigiaSaude Premium
+name: Admin VigiaSaude
 
 on:
   workflow_dispatch: # Permite ligar manualmente
